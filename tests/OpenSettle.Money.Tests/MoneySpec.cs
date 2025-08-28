@@ -21,11 +21,13 @@ public class MoneySpec
     public void rejects_negative_amount_and_non_three_letter_currency()
     {
         Action a1 = () => new OpenSettle.Money.Money(-0.01m, "PLN");
-        Action a2 = () => new OpenSettle.Money.Money(10m, "PL");     // too short
-        Action a3 = () => new OpenSettle.Money.Money(10m, "PL1");    // not letters
+        Action a2 = () => new OpenSettle.Money.Money(1m, "PŁN"); // not ASCII letters
+        Action a3 = () => new OpenSettle.Money.Money(10m, "PL");     // too short
+        Action a4 = () => new OpenSettle.Money.Money(10m, "PL1");    // not letters
         a1.Should().Throw<ArgumentOutOfRangeException>();
         a2.Should().Throw<ArgumentException>();
         a3.Should().Throw<ArgumentException>();
+        a4.Should().Throw<ArgumentException>();
     }
 
     [Fact]

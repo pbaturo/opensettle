@@ -2,10 +2,10 @@
 using System.Globalization;
 namespace OpenSettle.Money;
 
-public record struct Money
+public readonly record struct Money
 {
     public decimal Amount { get; }
-    public string Currency { get; } = "";
+    public string Currency { get; }
 
     public Money(decimal amount, string currency)
     {
@@ -62,6 +62,7 @@ public record struct Money
 
       public override string ToString() =>
         string.Format(CultureInfo.InvariantCulture, "{0:0.00} {1}", Amount, Currency);
+
     public static bool TryParse(string? s, out Money money)
     {
         money = default;
