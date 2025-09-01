@@ -1,10 +1,10 @@
-# OpenSettle — Fintech Platform Blueprint (.NET 8 + Azure)
+# OpenSettle — Fintech Platform Blueprint (.NET 9 + Azure)
 
 ![CI](https://github.com/pbaturo/opensettle/actions/workflows/ci.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
 **OpenSettle** is a reference platform for **payments & settlement** aimed at demonstrating:
-- **Modern .NET 8/9** (Minimal APIs, EF Core, async messaging)
+- **Modern .NET 9** (Minimal APIs, EF Core, async messaging)
 - **SRE foundations** (SLO/SLI, runbooks, observability with **OpenTelemetry**)
 - **DevOps/IaC** (Docker, GitHub Actions, Bicep/Terraform, Azure Container Apps/AKS)
 - **Security & Compliance mindset** (PII basics, auditability)
@@ -16,7 +16,7 @@
 
 ```mermaid
 flowchart LR
-  Client -->|HTTPS| API[Payments API (.NET 8)]
+  Client -->|HTTPS| API[Payments API (.NET 9)]
   API -->|Commands| Bus[Azure Service Bus]
   API --> DB[(PostgreSQL)]
   API --> Cache[(Redis)]
