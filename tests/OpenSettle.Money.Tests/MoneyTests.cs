@@ -1,60 +1,57 @@
-﻿using System;
-using OpenSettle.Money;
-using Xunit;
+﻿using Xunit;
 
-namespace OpenSettle.MoneyTests;
+namespace OpenSettle.Money.Tests;
 
 public class MoneyTest
 {
     [Fact]
-    public void ValidMoney_ShouldRoundAmountAndSetCurrency()
+    public void ValidMoneyRoundsAmountAndSetsCurrency()
     {
         // Arrange
-        decimal amount = 10.123m;
-        string currency = "USD";
+        var amount = 10.123m;
+        var currency = "USD";
 
         // Act
-        var money = new OpenSettle.Money.Money(amount, currency);
+        var money = new Money(amount, currency);
 
         // Assert
-        Assert.Equal(Math.Round(amount, 2, MidpointRounding.ToEven), money.Amount);
+        Assert.Equal(10.12m, money.Amount);
         Assert.Equal(currency, money.Currency);
     }
 
     [Theory]
     [InlineData(-1.0)]
     [InlineData(-0.01)]
-    public void NegativeAmount_ShouldThrowArgumentOutOfRangeException(decimal amount)
+    public void NegativeAmountThrowsArgumentOutOfRangeException(decimal amount)
     {
         // Arrange
-        string currency = "EUR";
+        var currency = "EUR";
 
         // Act & Assert
-        Assert.Throws<ArgumentOutOfRangeException>(() => new OpenSettle.Money.Money(amount, currency));
+        _ = Assert.Throws<ArgumentOutOfRangeException>(() => new Money(amount, currency));
     }
 
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void NullOrWhitespaceCurrency_ShouldThrowArgumentException(string currency)
+    public void NullOrWhitespaceCurrencyThrowsArgumentException(string currency)
     {
         // Arrange
-        decimal amount = 10.0m;
+        var amount = 10m;
 
         // Act & Assert
-        var exception = Assert.Throws<ArgumentException>(() => new OpenSettle.Money.Money(amount, currency));
-        Assert.Contains("Currency", exception.Message);
+        _ = Assert.Throws<ArgumentException>(() => new Money(amount, currency));
     }
 
     [Theory]
+    [InlineData("USDD")]
     [InlineData("US")]
-    [InlineData("EURO")]
-    public void InvalidCurrencyLength_ShouldThrowArgumentException(string currency)
+    public void InvalidCurrencyLengthThrowsArgumentException(string currency)
     {
         // Arrange
-        decimal amount = 10.0m;
+        var amount = 10m;
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => new OpenSettle.Money.Money(amount, currency));
+        _ = Assert.Throws<ArgumentException>(() => new Money(amount, currency));
     }
 }

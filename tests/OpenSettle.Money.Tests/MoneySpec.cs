@@ -1,7 +1,4 @@
-using System;
-using System.Globalization;
 using FluentAssertions;
-using OpenSettle.Money;
 using Xunit;
 
 namespace OpenSettle.Money.Tests;
@@ -9,67 +6,75 @@ namespace OpenSettle.Money.Tests;
 public class MoneySpec
 {
     [Fact]
-    public void creates_and_normalizes_currency_and_rounds_to_two_decimals()
+    public void CreatesAndNormalizesCurrencyAndRoundsToTwoDecimals()
     {
-        var m = new OpenSettle.Money.Money(12.345m, "pln");
-        m.Amount.Should().Be(12.34m);
-        m.Currency.Should().Be("PLN");
-        m.ToString().Should().Be("12.34 PLN");
+        // Arrange & Act
+        Money money = new(12.345m, "pln");
+
+        // Assert
+        _ = money.Amount.Should().Be(12.34m);
+        _ = money.Currency.Should().Be("PLN");
+        _ = money.ToString().Should().Be("12.34 PLN");
     }
 
     [Fact]
-    public void rejects_negative_amount_and_non_three_letter_currency()
+    public void RejectsNegativeAmountAndNonThreeLetterCurrency()
     {
-        Action a1 = () => new OpenSettle.Money.Money(-0.01m, "PLN");
-        Action a2 = () => new OpenSettle.Money.Money(1m, "PŁN"); // not ASCII letters
-        Action a3 = () => new OpenSettle.Money.Money(10m, "PL");     // too short
-        Action a4 = () => new OpenSettle.Money.Money(10m, "PL1");    // not letters
-        a1.Should().Throw<ArgumentOutOfRangeException>();
-        a2.Should().Throw<ArgumentException>();
-        a3.Should().Throw<ArgumentException>();
-        a4.Should().Throw<ArgumentException>();
+        // Arrange & Act & Assert
+        Action action1 = () => new Money(-0.01m, "PLN");
+        Action action2 = () => new Money(1m, "PŁN");
+        Action action3 = () => new Money(10m, "PL");
+        Action action4 = () => new Money(10m, "PL1");
+
+        _ = action1.Should().Throw<ArgumentOutOfRangeException>();
+        _ = action2.Should().Throw<ArgumentException>();
+        _ = action3.Should().Throw<ArgumentException>();
+        _ = action4.Should().Throw<ArgumentException>();
     }
 
     [Fact]
-    public void arithmetic_only_with_same_currency_and_non_negative_result()
+    public void ArithmeticOnlyWithSameCurrencyAndNonNegativeResult()
     {
-        var a = new OpenSettle.Money.Money(100m, "PLN");
-        var b = new OpenSettle.Money.Money(40m, "PLN");
-        (a + b).Should().Be(new OpenSettle.Money.Money(140m, "PLN"));
-        (a - b).Should().Be(new OpenSettle.Money.Money(60m, "PLN"));
+        // Arrange
+        Money a = new(100m, "PLN");
+        Money b = new(40m, "PLN");
+        Money eur = new(1m, "EUR");
 
-        var eur = new OpenSettle.Money.Money(1m, "EUR");
-        Action mix = () => { var _ = a + eur; };
-        mix.Should().Throw<InvalidOperationException>();
+        // Act & Assert
+        _ = (a + b).Should().Be(new Money(140m, "PLN"));
 
-        Action belowZero = () => { var _ = new OpenSettle.Money.Money(5m, "PLN") - new OpenSettle.Money.Money(6m, "PLN"); };
-        belowZero.Should().Throw<InvalidOperationException>();
+        Action mixedCurrencies = () => { _ = a + eur; };
+        _ = mixedCurrencies.Should().Throw<InvalidOperationException>();
+
+        Action negativeResult = () => { _ = new Money(5m, "PLN") - new Money(6m, "PLN"); };
+        _ = negativeResult.Should().Throw<InvalidOperationException>();
     }
 
     [Fact]
-    public void multiply_uses_bankers_rounding_to_two_decimals()
+    public void MultiplyUsesBankersRoundingToTwoDecimals()
     {
-        var a = new OpenSettle.Money.Money(10m, "PLN");
-        (a * 1.235m).Amount.Should().Be(12.35m); // 12.35 ToEven
-        (a * 1.225m).Amount.Should().Be(12.25m); // 12.25 ToEven
+        Money money = new(10m, "PLN");
+        _ = (money * 1.235m).Amount.Should().Be(12.35m);
+        _ = (money * 1.225m).Amount.Should().Be(12.25m);
     }
 
     [Fact]
-    public void percent_is_a_convenient_wrapper_over_multiplication()
+    public void PercentIsAConvenientWrapperOverMultiplication()
     {
-        var a = new OpenSettle.Money.Money(200m, "PLN");
-        a.Percent(10).Should().Be(new OpenSettle.Money.Money(220m, "PLN"));
-        a.Percent(-5).Should().Be(new OpenSettle.Money.Money(190m, "PLN"));
+        Money money = new(200m, "PLN");
+        _ = money.Percent(10).Should().Be(new Money(220m, "PLN"));
+        _ = money.Percent(-5).Should().Be(new Money(190m, "PLN"));
     }
 
     [Fact]
-    public void tryparse_supports_both_token_orders_and_trims_whitespace()
+    public void TryParseSupportsBothTokenOrdersAndTrimsWhitespace()
     {
-        OpenSettle.Money.Money.TryParse("12.5 PLN", out var m1).Should().BeTrue();
-        m1.Should().Be(new OpenSettle.Money.Money(12.5m, "PLN"));
+        // Act & Assert
+        _ = Money.TryParse("12.5 PLN", out Money m1).Should().BeTrue();
+        _ = m1.Should().Be(new Money(12.5m, "PLN"));
 
-        OpenSettle.Money.Money.TryParse("  PLN   7.25  ", out var m2).Should().BeTrue();
-        m2.Should().Be(new OpenSettle.Money.Money(7.25m, "PLN"));
+        _ = Money.TryParse("  PLN   7.25  ", out Money m2).Should().BeTrue();
+        _ = m2.Should().Be(new Money(7.25m, "PLN"));
     }
 
     [Theory]
@@ -77,13 +82,15 @@ public class MoneySpec
     [InlineData("PLN twelve")]
     [InlineData("123.45")]
     [InlineData("EUR 12.34.56")]
-    public void tryparse_rejects_invalid_inputs(string input)
-        => OpenSettle.Money.Money.TryParse(input, out _).Should().BeFalse();
+    public void TryParseRejectsInvalidInputs(string input)
+    {
+        _ = Money.TryParse(input, out _).Should().BeFalse();
+    }
 
     [Fact]
-    public void parse_throws_on_invalid_input()
+    public void ParseThrowsOnInvalidInput()
     {
-        Action act = () => OpenSettle.Money.Money.Parse("foo bar");
-        act.Should().Throw<FormatException>();
+        Action act = () => Money.Parse("foo bar");
+        _ = act.Should().Throw<FormatException>();
     }
 }

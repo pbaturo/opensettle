@@ -1,0 +1,94 @@
+using Confluent.Kafka;
+
+namespace OpenSettle.Kafka.Configuration;
+
+/// <summary>
+/// Hardcoded, local-only defaults for running against Redpanda in Docker.
+/// Centralize all literals here to be moved to Options/appsettings later.
+/// </summary>
+public static class KafkaLocalDefaults
+{
+    public static ProducerConfig GetProducerConfig()
+    {
+        ProducerConfig producerConfig = new()
+        {
+            BootstrapServers = Common.BootstrapServers
+        };
+        return producerConfig;
+    }
+
+    public static class Common
+    {
+        /// <summary>Host apps on your machine connect to Redpanda via localhost:9092.</summary>
+        public const string BootstrapServers = "localhost:9092";
+
+        /// <summary>Identifies the client in broker logs/metrics.</summary>
+        public const string ClientId = "opensettle-dev";
+
+        /// <summary>Default message schema version to stamp into headers.</summary>
+        public const string SchemaVersion = "v1";
+    }
+
+    public static class Producer
+    {
+        /// <summary>Enable idempotent producer to avoid duplicates on retries.</summary>
+        public const bool EnableIdempotence = true;
+
+        /// <summary>Durability level; map to Confluent config (e.g., Acks=All).</summary>
+        public const string Acks = "All";
+
+        /// <summary>Compression for payloads; tweak later if needed.</summary>
+        public const string CompressionType = "None";
+
+        /// <summary>Batch linger (ms) before sending; 0 = send immediately.</summary>
+        public const int LingerMs = 0;
+
+        /// <summary>Fail a send if not acknowledged within this timeout (ms).</summary>
+        public const int MessageTimeoutMs = 30_000;
+    }
+
+    public static class Consumer
+    {
+        /// <summary>Consumer group id (offsets are tracked per group).</summary>
+        public const string GroupId = "opensettle-worker-dev";
+
+        /// <summary>Manual commits after success (at-least-once).</summary>
+        public const bool EnableAutoCommit = false;
+
+        /// <summary>Where to start if no committed offsets exist.</summary>
+        public const string AutoOffsetReset = "Earliest";
+
+        /// <summary>Max time (ms) between polls before considered unresponsive.</summary>
+        public const int MaxPollIntervalMs = 300_000;
+
+        /// <summary>Heartbeat/session timeout (ms).</summary>
+        public const int SessionTimeoutMs = 10_000;
+    }
+
+    public static class Topics
+    {
+        /// <summary>Primary event stream for new payments.</summary>
+        public const string PaymentsCreated = "payments.created";
+
+        /// <summary>Dead-letter topic for poison messages from PaymentsCreated.</summary>
+        public const string PaymentsCreatedDlq = "payments.created.dlq";
+    }
+
+    public static class Admin
+    {
+        /// <summary>Create topics on startup in local dev (idempotent).</summary>
+        public const bool EnsureTopicsOnStart = true;
+
+        /// <summary>Partition count for payments.created.</summary>
+        public const int PaymentsCreatedPartitions = 3;
+
+        /// <summary>Retention for payments.created in hours (7 days).</summary>
+        public const int PaymentsCreatedRetentionHours = 168;
+
+        /// <summary>Partition count for DLQ.</summary>
+        public const int DlqPartitions = 3;
+
+        /// <summary>Retention for DLQ in hours (30 days).</summary>
+        public const int DlqRetentionHours = 720;
+    }
+}
