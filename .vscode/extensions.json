@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "ms-dotnettools.csdevkit",
+    "editorconfig.editorconfig",
+    "eamodio.gitlens",
+    "usernamehw.errorlens",
+    "ms-azuretools.vscode-docker",
+    "redhat.vscode-yaml",
+    "rangav.vscode-thunder-client",
+    "bierner.markdown-mermaid"
+  ]
+}

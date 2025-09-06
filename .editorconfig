@@ -1,9 +1,19 @@
 root = true
 
 [*.cs]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+indent_style = space
+indent_size = 4
+
+# Enforce diagnostics in-editor (build enforcement is in Directory.Build.props)
+dotnet_analyzer_diagnostic.category-Style.severity = warning
+dotnet_analyzer_diagnostic.category-Design.severity = warning
+dotnet_analyzer_diagnostic.category-Naming.severity = warning
 
 ###############################
-# Fields (private/internal) => _camelCase
+# Private/internal fields -> _camelCase
 ###############################
 dotnet_naming_rule.private_fields_with_underscore.severity = warning
 dotnet_naming_rule.private_fields_with_underscore.symbols  = private_fields
@@ -16,7 +26,7 @@ dotnet_naming_style.camel_with_underscore.capitalization = camel_case
 dotnet_naming_style.camel_with_underscore.required_prefix = _
 
 ###############################
-# Constants => PascalCase
+# Constants -> PascalCase
 ###############################
 dotnet_naming_rule.constants_pascalcase.severity = warning
 dotnet_naming_rule.constants_pascalcase.symbols  = constants
@@ -28,7 +38,7 @@ dotnet_naming_symbols.constants.required_modifiers = const
 dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 
 ###############################
-# Properties => PascalCase
+# Properties -> PascalCase
 ###############################
 dotnet_naming_rule.properties_pascalcase.severity = warning
 dotnet_naming_rule.properties_pascalcase.symbols  = properties
@@ -38,11 +48,11 @@ dotnet_naming_symbols.properties.applicable_kinds = property
 dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 
 ###############################
-# Parameters & locals => camelCase
+# Locals & parameters -> camelCase
 ###############################
-dotnet_naming_rule.parameters_camelcase.severity = warning
-dotnet_naming_rule.parameters_camelcase.symbols  = parameters
-dotnet_naming_rule.parameters_camelcase.style    = camel_case_style
+dotnet_naming_rule.parameters_locals_camelcase.severity = warning
+dotnet_naming_rule.parameters_locals_camelcase.symbols  = parameters_locals
+dotnet_naming_rule.parameters_locals_camelcase.style    = camel_case_style
 
-dotnet_naming_symbols.parameters.applicable_kinds = parameter, local
+dotnet_naming_symbols.parameters_locals.applicable_kinds = parameter, local
 dotnet_naming_style.camel_case_style.capitalization = camel_case
