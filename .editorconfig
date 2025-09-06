@@ -1,3 +1,7 @@
+# - IDE0005 (remove unnecessary usings) runs at build only when
+#   <GenerateDocumentationFile>true</GenerateDocumentationFile> is set.
+#   See the "XML docs / IDE0005" section below for how/when to change.
+
 root = true
 
 [*.cs]
@@ -7,19 +11,22 @@ insert_final_newline = true
 indent_style = space
 indent_size = 4
 
-# Enforce diagnostics in-editor (build enforcement is in Directory.Build.props)
+########################################
+# General analyzer severities in editor
+########################################
 dotnet_analyzer_diagnostic.category-Style.severity = warning
 dotnet_analyzer_diagnostic.category-Design.severity = warning
 dotnet_analyzer_diagnostic.category-Naming.severity = warning
 
-###############################
-# Enforce file-scoped namespaces
-###############################
+########################################
+# File-scoped namespaces (enforced)
+########################################
 csharp_style_namespace_declarations = file_scoped:error
 
-###############################
+########################################
+# Naming rules
+########################################
 # Private/internal fields -> _camelCase
-###############################
 dotnet_naming_rule.private_fields_with_underscore.severity = warning
 dotnet_naming_rule.private_fields_with_underscore.symbols  = private_fields
 dotnet_naming_rule.private_fields_with_underscore.style    = camel_with_underscore
@@ -30,9 +37,7 @@ dotnet_naming_symbols.private_fields.applicable_accessibilities = private, inter
 dotnet_naming_style.camel_with_underscore.capitalization = camel_case
 dotnet_naming_style.camel_with_underscore.required_prefix = _
 
-###############################
 # Constants -> PascalCase
-###############################
 dotnet_naming_rule.constants_pascalcase.severity = warning
 dotnet_naming_rule.constants_pascalcase.symbols  = constants
 dotnet_naming_rule.constants_pascalcase.style    = pascal_case_style
@@ -42,9 +47,7 @@ dotnet_naming_symbols.constants.required_modifiers = const
 
 dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 
-###############################
 # Properties -> PascalCase
-###############################
 dotnet_naming_rule.properties_pascalcase.severity = warning
 dotnet_naming_rule.properties_pascalcase.symbols  = properties
 dotnet_naming_rule.properties_pascalcase.style    = pascal_case_style
@@ -52,12 +55,32 @@ dotnet_naming_rule.properties_pascalcase.style    = pascal_case_style
 dotnet_naming_symbols.properties.applicable_kinds = property
 dotnet_naming_style.pascal_case_style.capitalization = pascal_case
 
-###############################
 # Locals & parameters -> camelCase
-###############################
 dotnet_naming_rule.parameters_locals_camelcase.severity = warning
 dotnet_naming_rule.parameters_locals_camelcase.symbols  = parameters_locals
 dotnet_naming_rule.parameters_locals_camelcase.style    = camel_case_style
 
 dotnet_naming_symbols.parameters_locals.applicable_kinds = parameter, local
 dotnet_naming_style.camel_case_style.capitalization = camel_case
+
+########################################
+# Modern syntax preferences
+########################################
+# Use 'default' literal instead of default(T)
+dotnet_diagnostic.IDE0160.severity = warning
+# Use 'default' for default parameter values
+dotnet_diagnostic.IDE0161.severity = warning
+
+########################################
+# Unnecessary usings & XML docs (adjust later)
+########################################
+# IDE0005 removes unused usings. At build, this requires
+# <GenerateDocumentationFile>true</GenerateDocumentationFile>.
+# Keep it as warning for now; when you enable XML docs in MSBuild,
+# you can raise this to 'error' for strict enforcement.
+dotnet_diagnostic.IDE0005.severity = warning
+
+# Missing XML comment warnings (CS1591):
+# Suppress for now while docs are disabled; when you turn on XML docs in MSBuild,
+# change to 'warning' (or 'error') to enforce public API documentation.
+dotnet_diagnostic.CS1591.severity = none
