@@ -4,8 +4,8 @@ services:
     image: redpandadata/redpanda:latest
     container_name: redpanda
     ports:
-      - "9092:9092"   # Kafka for host apps
-      - "9644:9644"   # Redpanda Admin API
+      - "9092:9092" # Kafka for host apps
+      - "9644:9644" # Redpanda Admin API
     command: >
       redpanda start
       --overprovisioned --smp 1 --memory 1G --reserve-memory 0M --node-id 0
@@ -18,6 +18,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:latest
+    container_name: redpanda-console
+    environment:
+      # Console runs inside the compose network → use the INTERNAL listener
+      KAFKA_BROKERS: redpanda:29092
+      # Enable admin features (topics, consumer groups, configs, etc.)
+      REDPANDA_ADMIN_URLS: http://redpanda:9644
+    ports:
+      - "8080:8080"
+    depends_on:
+      redpanda:
+        condition: service_healthy
 
   postgres:
     image: postgres:16-alpine
@@ -54,11 +68,11 @@ services:
     image: jaegertracing/all-in-one:1.57
     container_name: jaeger
     environment:
-      COLLECTOR_OTLP_ENABLED: "true"  # enable OTLP gRPC/HTTP
+      COLLECTOR_OTLP_ENABLED: "true" # enable OTLP gRPC/HTTP
     ports:
       - "16686:16686" # UI
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
       - "14250:14250" # gRPC collector
       - "14268:14268" # HTTP collector
     healthcheck:
