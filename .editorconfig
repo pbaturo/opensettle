@@ -13,6 +13,11 @@ dotnet_analyzer_diagnostic.category-Design.severity = warning
 dotnet_analyzer_diagnostic.category-Naming.severity = warning
 
 ###############################
+# Enforce file-scoped namespaces
+###############################
+csharp_style_namespace_declarations = file_scoped:error
+
+###############################
 # Private/internal fields -> _camelCase
 ###############################
 dotnet_naming_rule.private_fields_with_underscore.severity = warning
