@@ -1,6 +1,5 @@
 ﻿using System.Text;
 using Confluent.Kafka;
-using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using OpenSettle.Kafka.Producer;
 using Xunit;
@@ -12,29 +11,34 @@ namespace OpenSettle.Kafka.Tests;
 public class ConfluentKafkaProducerTests : IDisposable
 {
     private const string KafkaHost = "localhost";
-    private const int KafkaPort = 9092;  // Updated to match docker-compose.yml
+    private const int KafkaPort = 9092;
     private readonly string _testTopic = "test-topic";
     private readonly IConsumer<string, byte[]>? _consumer;
     private readonly KafkaProducer? _producer;
+    private readonly ILogger<ConfluentKafkaProducerTests> _logger;
 
     public ConfluentKafkaProducerTests(ITestOutputHelper output)
     {
         ILoggerFactory factory = LoggerFactory.Create(b =>
-        b.AddXUnit(output)
-         .SetMinimumLevel(LogLevel.Debug));
+            b.AddXUnit(output)
+             .SetMinimumLevel(LogLevel.Debug));
 
-        ILogger<KafkaProducer> logger = factory.CreateLogger<KafkaProducer>();
-        _producer = new KafkaProducer(logger);
+        _logger = factory.CreateLogger<ConfluentKafkaProducerTests>();
 
-        logger.LogInformation("Starting Kafka producer tests...");
+        _logger.LogInformation("Starting Kafka producer tests...");
+
         if (!IsKafkaAvailable())
         {
-            logger.LogWarning("Kafka is not available at {Host}:{Port}, skipping tests.", KafkaHost, KafkaPort);
+            _logger.LogWarning("Kafka is not available at {Host}:{Port}, skipping tests.", KafkaHost, KafkaPort);
             return;
         }
-        logger.LogInformation("Kafka is available at {Host}:{Port}, proceeding with tests.", KafkaHost, KafkaPort);
-        _producer = new KafkaProducer(logger);
-        logger.LogInformation("Kafka producer initialized.");
+
+        _logger.LogInformation("Kafka is available at {Host}:{Port}, proceeding with tests.", KafkaHost, KafkaPort);
+
+        ILogger<KafkaProducer> producerLogger = factory.CreateLogger<KafkaProducer>();
+        _producer = new KafkaProducer(producerLogger);
+        _logger.LogInformation("Kafka producer initialized.");
+
         var consumerConfig = new ConsumerConfig
         {
             BootstrapServers = $"{KafkaHost}:{KafkaPort}",
@@ -44,15 +48,18 @@ public class ConfluentKafkaProducerTests : IDisposable
 
         _consumer = new ConsumerBuilder<string, byte[]>(consumerConfig).Build();
         _consumer.Subscribe(_testTopic);
+        _logger.LogInformation("Kafka consumer initialized and subscribed to topic: {Topic}", _testTopic);
     }
 
     [Fact]
     public async Task ShouldProduceMessageToKafkaAsync()
     {
-        _ = _producer.Should().NotBeNull("because Kafka should be available");
-        _ = _consumer.Should().NotBeNull("because Kafka should be available");
-
         // Arrange
+        Assert.NotNull(_producer);
+        Assert.NotNull(_consumer);
+
+        _logger.LogInformation("Starting message production test");
+
         var key = "test-key";
         var payload = Encoding.UTF8.GetBytes("{\"test\":\"data\"}");
         var headers = new Dictionary<string, string>
@@ -64,26 +71,42 @@ public class ConfluentKafkaProducerTests : IDisposable
         };
 
         // Act
-        ProduceResult result = await _producer!.SendAsync(_testTopic, key, payload, headers, default);
+        _logger.LogInformation("Sending message with key: {Key}", key);
+        ProduceResult result = await _producer.SendAsync(_testTopic, key, payload, headers, default);
 
         // Assert
-        _ = result.Topic.Should().Be(_testTopic);
-        _ = result.Offset.Should().BeGreaterOrEqualTo(0);
+        Assert.Equal(_testTopic, result.Topic);
+        Assert.True(result.Offset >= 0);
+        _logger.LogInformation("Message produced to topic: {Topic}, partition: {Partition}, offset: {Offset}",
+            result.Topic, result.Partition, result.Offset);
 
         // Verify message was received
-        ConsumeResult<string, byte[]> consumeResult = _consumer!.Consume(TimeSpan.FromSeconds(5));
-        _ = consumeResult.Should().NotBeNull();
-        _ = consumeResult.Message.Key.Should().Be(key);
-        _ = consumeResult.Message.Value.Should().BeEquivalentTo(payload);
+        _logger.LogInformation("Consuming message to verify delivery");
+        ConsumeResult<string, byte[]> consumeResult = _consumer.Consume(TimeSpan.FromSeconds(5));
+
+        Assert.NotNull(consumeResult);
+        Assert.NotNull(consumeResult.Message);
+        Assert.Equal(key, consumeResult.Message.Key);
+        Assert.Equal(payload, consumeResult.Message.Value);
+
+        _logger.LogInformation("Message consumed successfully with key: {Key}", consumeResult.Message.Key);
 
         // Verify headers
         foreach (KeyValuePair<string, string> header in headers)
         {
-            var headerValue = consumeResult.Message.Headers
-                .First(h => h.Key == header.Key)
-                .GetValueBytes();
-            _ = Encoding.UTF8.GetString(headerValue).Should().Be(header.Value);
+            IHeader? kafkaHeader = consumeResult.Message.Headers
+                .FirstOrDefault(h => h.Key == header.Key);
+
+            Assert.NotNull(kafkaHeader);
+
+            byte[] headerValue = kafkaHeader.GetValueBytes();
+            string headerStringValue = Encoding.UTF8.GetString(headerValue);
+
+            Assert.Equal(header.Value, headerStringValue);
+            _logger.LogInformation("Header verified - {Key}: {Value}", header.Key, headerStringValue);
         }
+
+        _logger.LogInformation("All assertions passed successfully");
     }
 
     private static bool IsKafkaAvailable()
@@ -102,6 +125,8 @@ public class ConfluentKafkaProducerTests : IDisposable
 
     public void Dispose()
     {
+        _logger?.LogInformation("Disposing test resources");
         _consumer?.Dispose();
+        _logger?.LogInformation("Test cleanup completed");
     }
 }

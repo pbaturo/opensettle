@@ -1,4 +1,3 @@
-using FluentAssertions;
 using Xunit;
 
 namespace OpenSettle.Money.Tests;
@@ -12,24 +11,19 @@ public class MoneySpec
         Money money = new(12.345m, "pln");
 
         // Assert
-        _ = money.Amount.Should().Be(12.34m);
-        _ = money.Currency.Should().Be("PLN");
-        _ = money.ToString().Should().Be("12.34 PLN");
+        Assert.Equal(12.34m, money.Amount);
+        Assert.Equal("PLN", money.Currency);
+        Assert.Equal("12.34 PLN", money.ToString());
     }
 
     [Fact]
     public void RejectsNegativeAmountAndNonThreeLetterCurrency()
     {
         // Arrange & Act & Assert
-        Action action1 = () => new Money(-0.01m, "PLN");
-        Action action2 = () => new Money(1m, "PŁN");
-        Action action3 = () => new Money(10m, "PL");
-        Action action4 = () => new Money(10m, "PL1");
-
-        _ = action1.Should().Throw<ArgumentOutOfRangeException>();
-        _ = action2.Should().Throw<ArgumentException>();
-        _ = action3.Should().Throw<ArgumentException>();
-        _ = action4.Should().Throw<ArgumentException>();
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Money(-0.01m, "PLN"));
+        Assert.Throws<ArgumentException>(() => new Money(1m, "PŁN"));
+        Assert.Throws<ArgumentException>(() => new Money(10m, "PL"));
+        Assert.Throws<ArgumentException>(() => new Money(10m, "PL1"));
     }
 
     [Fact]
@@ -41,40 +35,40 @@ public class MoneySpec
         Money eur = new(1m, "EUR");
 
         // Act & Assert
-        _ = (a + b).Should().Be(new Money(140m, "PLN"));
+        Money sum = a + b;
+        Assert.Equal(new Money(140m, "PLN"), sum);
 
-        Action mixedCurrencies = () => { _ = a + eur; };
-        _ = mixedCurrencies.Should().Throw<InvalidOperationException>();
-
-        Action negativeResult = () => { _ = new Money(5m, "PLN") - new Money(6m, "PLN"); };
-        _ = negativeResult.Should().Throw<InvalidOperationException>();
+        Assert.Throws<InvalidOperationException>(() => a + eur);
+        Assert.Throws<InvalidOperationException>(() => new Money(5m, "PLN") - new Money(6m, "PLN"));
     }
 
     [Fact]
     public void MultiplyUsesBankersRoundingToTwoDecimals()
     {
         Money money = new(10m, "PLN");
-        _ = (money * 1.235m).Amount.Should().Be(12.35m);
-        _ = (money * 1.225m).Amount.Should().Be(12.25m);
+        Assert.Equal(12.35m, (money * 1.235m).Amount);
+        Assert.Equal(12.25m, (money * 1.225m).Amount);
     }
 
     [Fact]
     public void PercentIsAConvenientWrapperOverMultiplication()
     {
         Money money = new(200m, "PLN");
-        _ = money.Percent(10).Should().Be(new Money(220m, "PLN"));
-        _ = money.Percent(-5).Should().Be(new Money(190m, "PLN"));
+        Assert.Equal(new Money(220m, "PLN"), money.Percent(10));
+        Assert.Equal(new Money(190m, "PLN"), money.Percent(-5));
     }
 
     [Fact]
     public void TryParseSupportsBothTokenOrdersAndTrimsWhitespace()
     {
         // Act & Assert
-        _ = Money.TryParse("12.5 PLN", out Money m1).Should().BeTrue();
-        _ = m1.Should().Be(new Money(12.5m, "PLN"));
+        bool result1 = Money.TryParse("12.5 PLN", out Money m1);
+        Assert.True(result1);
+        Assert.Equal(new Money(12.5m, "PLN"), m1);
 
-        _ = Money.TryParse("  PLN   7.25  ", out Money m2).Should().BeTrue();
-        _ = m2.Should().Be(new Money(7.25m, "PLN"));
+        bool result2 = Money.TryParse("  PLN   7.25  ", out Money m2);
+        Assert.True(result2);
+        Assert.Equal(new Money(7.25m, "PLN"), m2);
     }
 
     [Theory]
@@ -84,13 +78,13 @@ public class MoneySpec
     [InlineData("EUR 12.34.56")]
     public void TryParseRejectsInvalidInputs(string input)
     {
-        _ = Money.TryParse(input, out _).Should().BeFalse();
+        bool result = Money.TryParse(input, out _);
+        Assert.False(result);
     }
 
     [Fact]
     public void ParseThrowsOnInvalidInput()
     {
-        Action act = () => Money.Parse("foo bar");
-        _ = act.Should().Throw<FormatException>();
+        Assert.Throws<FormatException>(() => Money.Parse("foo bar"));
     }
 }

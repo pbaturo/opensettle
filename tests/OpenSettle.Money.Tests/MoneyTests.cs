@@ -28,7 +28,7 @@ public class MoneyTest
         var currency = "EUR";
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentOutOfRangeException>(() => new Money(amount, currency));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new Money(amount, currency));
     }
 
     [Theory]
@@ -40,7 +40,7 @@ public class MoneyTest
         var amount = 10m;
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentException>(() => new Money(amount, currency));
+        Assert.Throws<ArgumentException>(() => new Money(amount, currency));
     }
 
     [Theory]
@@ -52,6 +52,6 @@ public class MoneyTest
         var amount = 10m;
 
         // Act & Assert
-        _ = Assert.Throws<ArgumentException>(() => new Money(amount, currency));
+        Assert.Throws<ArgumentException>(() => new Money(amount, currency));
     }
 }
