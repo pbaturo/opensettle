@@ -8,6 +8,10 @@ namespace OpenSettle.Kafka.Configuration;
 /// </summary>
 public static class KafkaLocalDefaults
 {
+    /// <summary>
+    /// Gets the producer configuration for local development with Redpanda.
+    /// </summary>
+    /// <returns>A configured ProducerConfig instance with local defaults.</returns>
     public static ProducerConfig GetProducerConfig()
     {
         ProducerConfig producerConfig = new()
@@ -17,6 +21,9 @@ public static class KafkaLocalDefaults
         return producerConfig;
     }
 
+    /// <summary>
+    /// Common configuration values shared across producers and consumers.
+    /// </summary>
     public static class Common
     {
         /// <summary>Host apps on your machine connect to Redpanda via localhost:9092.</summary>
@@ -29,6 +36,9 @@ public static class KafkaLocalDefaults
         public const string SchemaVersion = "v1";
     }
 
+    /// <summary>
+    /// Configuration values specific to Kafka producers.
+    /// </summary>
     public static class Producer
     {
         /// <summary>Enable idempotent producer to avoid duplicates on retries.</summary>
@@ -47,6 +57,9 @@ public static class KafkaLocalDefaults
         public const int MessageTimeoutMs = 30_000;
     }
 
+    /// <summary>
+    /// Configuration values specific to Kafka consumers.
+    /// </summary>
     public static class Consumer
     {
         /// <summary>Consumer group id (offsets are tracked per group).</summary>
@@ -65,6 +78,9 @@ public static class KafkaLocalDefaults
         public const int SessionTimeoutMs = 10_000;
     }
 
+    /// <summary>
+    /// Kafka topic names used by the application.
+    /// </summary>
     public static class Topics
     {
         /// <summary>Primary event stream for new payments.</summary>
@@ -74,6 +90,9 @@ public static class KafkaLocalDefaults
         public const string PaymentsCreatedDlq = "payments.created.dlq";
     }
 
+    /// <summary>
+    /// Administrative configuration for topic management and maintenance.
+    /// </summary>
     public static class Admin
     {
         /// <summary>Create topics on startup in local dev (idempotent).</summary>
