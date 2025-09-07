@@ -12,8 +12,7 @@ public class ConfluentKafkaProducerTests : IDisposable
 {
     private const string KafkaHost = "localhost";
     private const int KafkaPort = 9092;
-    private readonly string _testTopic = "test-topic";
-    private readonly IConsumer<string, byte[]>? _consumer;
+    private const string TestTopic = "integration-test-topic"; // Use a consistent test topic
     private readonly KafkaProducer? _producer;
     private readonly ILogger<ConfluentKafkaProducerTests> _logger;
 
@@ -24,8 +23,6 @@ public class ConfluentKafkaProducerTests : IDisposable
              .SetMinimumLevel(LogLevel.Debug));
 
         _logger = factory.CreateLogger<ConfluentKafkaProducerTests>();
-
-        _logger.LogInformation("Starting Kafka producer tests...");
 
         if (!IsKafkaAvailable())
         {
@@ -38,17 +35,6 @@ public class ConfluentKafkaProducerTests : IDisposable
         ILogger<KafkaProducer> producerLogger = factory.CreateLogger<KafkaProducer>();
         _producer = new KafkaProducer(producerLogger);
         _logger.LogInformation("Kafka producer initialized.");
-
-        var consumerConfig = new ConsumerConfig
-        {
-            BootstrapServers = $"{KafkaHost}:{KafkaPort}",
-            GroupId = "test-group",
-            AutoOffsetReset = AutoOffsetReset.Earliest
-        };
-
-        _consumer = new ConsumerBuilder<string, byte[]>(consumerConfig).Build();
-        _consumer.Subscribe(_testTopic);
-        _logger.LogInformation("Kafka consumer initialized and subscribed to topic: {Topic}", _testTopic);
     }
 
     [Fact]
@@ -56,11 +42,8 @@ public class ConfluentKafkaProducerTests : IDisposable
     {
         // Arrange
         Assert.NotNull(_producer);
-        Assert.NotNull(_consumer);
 
-        _logger.LogInformation("Starting message production test");
-
-        var key = "test-key";
+        var key = $"test-key-{Guid.NewGuid():N}";
         var payload = Encoding.UTF8.GetBytes("{\"test\":\"data\"}");
         var headers = new Dictionary<string, string>
         {
@@ -72,41 +55,153 @@ public class ConfluentKafkaProducerTests : IDisposable
 
         // Act
         _logger.LogInformation("Sending message with key: {Key}", key);
-        ProduceResult result = await _producer.SendAsync(_testTopic, key, payload, headers, default);
+        ProduceResult result = await _producer.SendAsync(TestTopic, key, payload, headers, default);
 
         // Assert
-        Assert.Equal(_testTopic, result.Topic);
+        Assert.Equal(TestTopic, result.Topic);
         Assert.True(result.Offset >= 0);
-        _logger.LogInformation("Message produced to topic: {Topic}, partition: {Partition}, offset: {Offset}",
+        Assert.True(result.Partition >= 0);
+
+        _logger.LogInformation("Message produced successfully to topic: {Topic}, partition: {Partition}, offset: {Offset}",
             result.Topic, result.Partition, result.Offset);
 
-        // Verify message was received
-        _logger.LogInformation("Consuming message to verify delivery");
-        ConsumeResult<string, byte[]> consumeResult = _consumer.Consume(TimeSpan.FromSeconds(5));
+        // Verify message exists by creating a dedicated consumer
+        await VerifyMessageExistsAsync(key, payload, headers, result);
+    }
+
+    private Task VerifyMessageExistsAsync(string expectedKey, byte[] expectedPayload,
+        Dictionary<string, string> expectedHeaders, ProduceResult produceResult)
+    {
+        _logger.LogInformation("Verifying message exists at offset {Offset}", produceResult.Offset);
+
+        var consumerConfig = new ConsumerConfig
+        {
+            BootstrapServers = $"{KafkaHost}:{KafkaPort}",
+            GroupId = $"verify-group-{Guid.NewGuid():N}",
+            AutoOffsetReset = AutoOffsetReset.Earliest,
+            EnableAutoCommit = false,
+            SessionTimeoutMs = 6000,
+            HeartbeatIntervalMs = 2000
+        };
+
+        using var consumer = new ConsumerBuilder<string, byte[]>(consumerConfig).Build();
+
+        // Assign to specific partition
+        var topicPartition = new TopicPartition(TestTopic, new Partition(produceResult.Partition));
+        consumer.Assign(new[] { topicPartition });
+
+        // Wait for assignment to complete by polling once
+        _logger.LogInformation("Waiting for partition assignment to complete...");
+        try
+        {
+            // Poll once with a short timeout to establish connection
+            consumer.Consume(TimeSpan.FromMilliseconds(100));
+        }
+        catch (ConsumeException)
+        {
+            // Expected if no messages available, assignment should still be complete
+        }
+
+        // Now seek to our message offset
+        var targetOffset = new TopicPartitionOffset(topicPartition, new Offset(produceResult.Offset));
+
+        _logger.LogInformation("Seeking to partition {Partition}, offset {Offset}",
+            produceResult.Partition, produceResult.Offset);
+
+        consumer.Seek(targetOffset);
+
+        // Consume the specific message
+        var consumeResult = consumer.Consume(TimeSpan.FromSeconds(10));
 
         Assert.NotNull(consumeResult);
         Assert.NotNull(consumeResult.Message);
-        Assert.Equal(key, consumeResult.Message.Key);
-        Assert.Equal(payload, consumeResult.Message.Value);
+        Assert.Equal(expectedKey, consumeResult.Message.Key);
+        Assert.Equal(expectedPayload, consumeResult.Message.Value);
+        Assert.Equal(produceResult.Offset, consumeResult.Offset.Value);
 
-        _logger.LogInformation("Message consumed successfully with key: {Key}", consumeResult.Message.Key);
+        _logger.LogInformation("Message verified successfully with key: {Key}", consumeResult.Message.Key);
 
         // Verify headers
-        foreach (KeyValuePair<string, string> header in headers)
+        foreach (var expectedHeader in expectedHeaders)
         {
-            IHeader? kafkaHeader = consumeResult.Message.Headers
-                .FirstOrDefault(h => h.Key == header.Key);
+            var kafkaHeader = consumeResult.Message.Headers
+                .FirstOrDefault(h => h.Key == expectedHeader.Key);
 
             Assert.NotNull(kafkaHeader);
 
-            byte[] headerValue = kafkaHeader.GetValueBytes();
-            string headerStringValue = Encoding.UTF8.GetString(headerValue);
+            string headerValue = Encoding.UTF8.GetString(kafkaHeader.GetValueBytes());
+            Assert.Equal(expectedHeader.Value, headerValue);
 
-            Assert.Equal(header.Value, headerStringValue);
-            _logger.LogInformation("Header verified - {Key}: {Value}", header.Key, headerStringValue);
+            _logger.LogInformation("Header verified - {Key}: {Value}", expectedHeader.Key, headerValue);
         }
 
-        _logger.LogInformation("All assertions passed successfully");
+        return Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task ShouldHandleKafkaUnavailableGracefully()
+    {
+        // Arrange
+        _logger.LogInformation("Testing error handling for unavailable Kafka service");
+
+        var config = new ProducerConfig
+        {
+            BootstrapServers = "localhost:9999", // Non-existent service
+            MessageTimeoutMs = 5000,
+            RequestTimeoutMs = 3000,
+            MessageSendMaxRetries = 1
+        };
+
+        using var kafkaProducer = new ProducerBuilder<string, byte[]>(config).Build();
+
+        var message = new Message<string, byte[]>
+        {
+            Key = "error-test-key",
+            Value = Encoding.UTF8.GetBytes("{\"test\":\"error-handling\"}"),
+            Headers = new Headers
+            {
+                { "traceparent", Encoding.UTF8.GetBytes("00-test-trace-01") }
+            }
+        };
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ProduceException<string, byte[]>>(
+            async () => await kafkaProducer.ProduceAsync(TestTopic, message, CancellationToken.None));
+
+        Assert.NotNull(exception);
+        Assert.True(exception.Error.IsError);
+
+        _logger.LogInformation("Caught expected exception: {ErrorCode} - {ErrorReason}",
+            exception.Error.Code, exception.Error.Reason);
+    }
+
+    [Fact]
+    public async Task ShouldHandleCancellationTokenGracefully()
+    {
+        // Skip if Kafka is not available
+        if (_producer == null)
+        {
+            _logger.LogInformation("Skipping cancellation test - Kafka not available");
+            return;
+        }
+
+        // Arrange
+        var key = "cancellation-test-key";
+        var payload = Encoding.UTF8.GetBytes("{\"test\":\"cancellation\"}");
+        var headers = new Dictionary<string, string>
+        {
+            ["correlation-id"] = "cancellation-test"
+        };
+
+        using var cancellationTokenSource = new CancellationTokenSource();
+        cancellationTokenSource.Cancel();
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            async () => await _producer.SendAsync(TestTopic, key, payload, headers, cancellationTokenSource.Token));
+
+        Assert.NotNull(exception);
+        _logger.LogInformation("Cancellation handled correctly: {ExceptionType}", exception.GetType().Name);
     }
 
     private static bool IsKafkaAvailable()
@@ -125,8 +220,6 @@ public class ConfluentKafkaProducerTests : IDisposable
 
     public void Dispose()
     {
-        _logger?.LogInformation("Disposing test resources");
-        _consumer?.Dispose();
         _logger?.LogInformation("Test cleanup completed");
     }
 }

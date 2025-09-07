@@ -16,7 +16,15 @@ public static class KafkaLocalDefaults
     {
         ProducerConfig producerConfig = new()
         {
-            BootstrapServers = Common.BootstrapServers
+            BootstrapServers = Common.BootstrapServers,
+            ClientId = Common.ClientId,
+            EnableIdempotence = Producer.EnableIdempotence,
+            Acks = Producer.AcksLevel,
+            MessageTimeoutMs = Producer.MessageTimeoutMs,
+            CompressionType = Producer.Compression,
+            LingerMs = Producer.LingerMs,
+            SocketKeepaliveEnable = true,
+            EnableDeliveryReports = true
         };
         return producerConfig;
     }
@@ -45,10 +53,10 @@ public static class KafkaLocalDefaults
         public const bool EnableIdempotence = true;
 
         /// <summary>Durability level; map to Confluent config (e.g., Acks=All).</summary>
-        public const string Acks = "All";
+        public const Acks AcksLevel = Acks.All;
 
         /// <summary>Compression for payloads; tweak later if needed.</summary>
-        public const string CompressionType = "None";
+        public const CompressionType Compression = CompressionType.None;
 
         /// <summary>Batch linger (ms) before sending; 0 = send immediately.</summary>
         public const int LingerMs = 0;
