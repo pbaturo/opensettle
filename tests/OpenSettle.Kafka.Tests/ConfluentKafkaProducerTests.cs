@@ -190,7 +190,10 @@ public class ConfluentKafkaProducerTests : IDisposable
         var payload = Encoding.UTF8.GetBytes("{\"test\":\"cancellation\"}");
         var headers = new Dictionary<string, string>
         {
-            ["correlation-id"] = "cancellation-test"
+            ["traceparent"] = "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01",
+            ["correlation-id"] = "cancellation-test",
+            ["idempotency-key"] = "cancellation-test-key"
+            // schema-version will be auto-injected by HeaderBinder
         };
 
         using var cancellationTokenSource = new CancellationTokenSource();
