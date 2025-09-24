@@ -2,7 +2,6 @@ using System.Text;
 using Confluent.Kafka;
 using Microsoft.Extensions.Logging;
 using OpenSettle.Kafka.Configuration;
-
 namespace OpenSettle.Kafka.Producer;
 
 /// <summary>
@@ -47,11 +46,23 @@ public sealed class KafkaProducer : IKafkaProducer
         IReadOnlyDictionary<string, string> headers,
         CancellationToken ct = default)
     {
+        if (string.IsNullOrWhiteSpace(topic))
+            throw new ArgumentException("Topic must be provided", nameof(topic));
+        if (string.IsNullOrWhiteSpace(key))
+            throw new ArgumentException("Key must be provided", nameof(key));
+        if (payload.IsEmpty)
+            throw new ArgumentException("Payload must be provided", nameof(payload));
+        if (headers is null)
+            throw new ArgumentNullException(nameof(headers));
+
+        // Validate and normalize headers
+        var validatedHeaders = HeaderBinder(headers);
+
         Message<string, byte[]> kafkaMsg = new()
         {
             Key = key,
             Value = payload.ToArray(),
-            Headers = headers.Aggregate(new Headers(), static (acc, kv) =>
+            Headers = validatedHeaders.Aggregate(new Headers(), static (acc, kv) =>
             {
                 acc.Add(kv.Key, Encoding.UTF8.GetBytes(kv.Value));
                 return acc;
@@ -65,8 +76,43 @@ public sealed class KafkaProducer : IKafkaProducer
             "Produced to {Topic} p{Partition} @ {Offset}",
             deliveryResult.Topic, deliveryResult.Partition, deliveryResult.Offset);
 
-        // Adjust to your actual ProduceResult signature
         return new ProduceResult(deliveryResult.Topic, deliveryResult.Partition, deliveryResult.Offset);
+    }
+
+    /// <summary>
+    /// Validates required headers and injects default values where appropriate.
+    /// </summary>
+    /// <param name="headers">The headers dictionary to validate and potentially modify.</param>
+    /// <returns>A validated headers dictionary with defaults applied.</returns>
+    /// <exception cref="ArgumentException">Thrown when required headers are missing or empty.</exception>
+    private static Dictionary<string, string> HeaderBinder(IReadOnlyDictionary<string, string> headers)
+    {
+        // Create a mutable copy for potential modifications
+        var validatedHeaders = new Dictionary<string, string>(headers, StringComparer.OrdinalIgnoreCase);
+
+        // Validate required headers
+        if (!validatedHeaders.TryGetValue("traceparent", out var traceparent) || string.IsNullOrWhiteSpace(traceparent))
+        {
+            throw new ArgumentException("Missing header: traceparent", nameof(headers));
+        }
+
+        if (!validatedHeaders.TryGetValue("correlation-id", out var correlationId) || string.IsNullOrWhiteSpace(correlationId))
+        {
+            throw new ArgumentException("Missing header: correlation-id", nameof(headers));
+        }
+
+        if (!validatedHeaders.TryGetValue("idempotency-key", out var idempotencyKey) || string.IsNullOrWhiteSpace(idempotencyKey))
+        {
+            throw new ArgumentException("Missing header: idempotency-key", nameof(headers));
+        }
+
+        // Inject default schema-version if missing or empty
+        if (!validatedHeaders.TryGetValue("schema-version", out var schemaVersion) || string.IsNullOrWhiteSpace(schemaVersion))
+        {
+            validatedHeaders["schema-version"] = KafkaLocalDefaults.Common.SchemaVersion;
+        }
+
+        return validatedHeaders;
     }
 }
 
